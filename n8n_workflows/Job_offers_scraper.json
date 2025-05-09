@@ -1,0 +1,199 @@
+{
+  "name": "Job_offers_scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=You are an AI agent designed to provide the latest job offers to the user via Telegram. Here's how you should operate:\n\n1. **Always call the sub-workflow** every time the user asks for job offers. Fetch the most up-to-date data by calling the sub-workflow again. Do **not** rely on any previously fetched job data or memory. Ensure that the job offer information is always fresh.\n\n2. The sub-workflow will return the job offers in the following **JSON format**:\n\n```json\n{\n  \"company\": \"SQUARE ONE RESOURCES sp. z o.o.\",\n  \"link\": \"https://www.pracuj.pl/praca/aws-engineer-with-python-react-typescript-warszawa-pulawska-2,oferta,1004043847?s=6f709573&searchId=MTc0Njc5MTE2MzY0NS40Mzgy\",\n  \"location\": \"Miejsce pracy: Cała Polska (praca zdalna) | Siedziba firmy: Warszawa, Ursynów\",\n  \"technologies\": [\n    \"AWS\",\n    \"Python\",\n    \"TypeScript\",\n    \"React.js\",\n    \"Terraform\"\n  ],\n  \"title\": \"AWS Engineer with Python & React/TypeScript\"\n}\n\n3. Remember to fetch all the data in the previous template\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -120,
+        -140
+      ],
+      "id": "a6a86aa9-44de-4c0a-b326-48d2676df846",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-r1-distill-llama-70b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        100
+      ],
+      "id": "525b5aec-392e-4768-bccd-72fae8408df3",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "VseGa25HBmOOeNPO",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -420,
+        -140
+      ],
+      "id": "f11bb517-0988-4de8-a735-0e054f2e96c7",
+      "name": "Telegram Trigger",
+      "webhookId": "fc6ee0f4-a001-4ba8-9fc4-00e68c241f86",
+      "credentials": {
+        "telegramApi": {
+          "id": "rscpAY3aQLuZUrkM",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        -140
+      ],
+      "id": "e52b0b42-f78a-415b-a1b0-d3729e2b84dd",
+      "name": "Telegram",
+      "webhookId": "7e0da5ed-c84d-4336-a68f-540e0c2ae248",
+      "credentials": {
+        "telegramApi": {
+          "id": "rscpAY3aQLuZUrkM",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        40,
+        100
+      ],
+      "id": "314d2982-337f-4545-94da-42efb2a1b91e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "description": "You should call the sub-workflow to fetch the latest job offers when:\n\n1. You need to retrieve up-to-date job data.\n2. The user has requested the job offers, or there is a specific trigger indicating that new job offers should be fetched.\n3. The job offer information is required to send through the Telegram bot.\n\nAfter calling the sub-workflow, you will receive a JSON response with the latest job offers, including the job title, description, location, and application link. Once you have this data, proceed with formatting it and sending it to the Telegram bot.\n\nEnsure that the sub-workflow is called only when new job offers are needed and avoid making unnecessary requests.\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "9QYVMCRvcpIp7HxK",
+          "mode": "list",
+          "cachedResultName": "scraper"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        220,
+        100
+      ],
+      "id": "b9323112-b19d-4fd7-b4aa-0d086c53c3dd",
+      "name": "Call n8n Workflow Tool"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call n8n Workflow Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "24d38f1c-feea-40f3-bf8d-d3eb6f240fee",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bb837e8ed77e67deb3698f783b738231a89760afbb00484f2e414bde317f3eb2"
+  },
+  "id": "oJruYyk1IrULzTLG",
+  "tags": []
+}

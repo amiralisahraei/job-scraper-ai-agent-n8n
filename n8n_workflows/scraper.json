@@ -1,0 +1,80 @@
+{
+  "name": "scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "http://192.168.0.196:5000",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -200,
+        -60
+      ],
+      "id": "f4312d2a-2bcf-4a0a-85ea-0c5a07b3797b",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "maxItems": 20
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        40,
+        -60
+      ],
+      "id": "dc760a9f-c02b-4ebc-8cd9-40dd4c0de41a",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -440,
+        -60
+      ],
+      "id": "b746147b-ebec-4110-972c-e7566b05ea62",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5fffd26a-0f88-4c29-b28c-f1d3ee995e61",
+  "meta": {
+    "instanceId": "bb837e8ed77e67deb3698f783b738231a89760afbb00484f2e414bde317f3eb2"
+  },
+  "id": "9QYVMCRvcpIp7HxK",
+  "tags": []
+}

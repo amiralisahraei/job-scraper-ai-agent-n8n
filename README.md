@@ -1,5 +1,5 @@
 
-# 🛠️ Telegram Job Scraper Bot with n8n & Selenium
+# 🛠️ Telegram Job Scraper Bot with n8n AI Agent & Selenium
 
 This project implements a fully automated job scraper and notifier system. It uses a Python script with Selenium to scrape job postings from [pracuj.pl](https://pracuj.pl), and a Telegram bot built using [n8n](https://n8n.io) to interact with users and deliver job results on request.
 

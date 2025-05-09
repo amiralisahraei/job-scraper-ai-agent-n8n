@@ -87,7 +87,14 @@ The scraper runs on a local server (e.g., Flask or any HTTP server exposing it v
 
 ## 📷 Screenshots
 
-You can refer to the `workflow_screenshots/` folder for visual reference of the n8n pipelines.
+Here are some visuals of the workflows in action:
+
+### 🧩 n8n Workflow 1 - Telegram Trigger
+![Workflow 1](workflow_screenshots/workflow2.png)
+
+### 🔄 n8n Workflow 2 - Job Fetcher
+![Workflow 2](workflow_screenshots/workflow1.png)
+
 
 ---
 

@@ -1,93 +1,105 @@
-
 # 🛠️ Telegram Job Scraper Bot with n8n AI Agent & Selenium
 
-This project implements a fully automated job scraper and notifier system. It uses a Python script with Selenium to collect job postings from a targeted website, and a Telegram bot built using n8n to interact with users and deliver job results on request.
+This project is a **Python-based job scraper** exposed as a Flask API, designed for integration with a Telegram bot via n8n workflows. It uses **Selenium** and **BeautifulSoup** to collect and filter job postings, and can be deployed locally or in the cloud using Docker.
 
 ---
 
 ## 📦 Features
 
-- Scrapes latest Python-related job offers from pracuj.pl
-- Filters out saved/starred job offers
-- Returns structured data including title, company, location, technologies, and link
-- User can ask for job offers via Telegram and receive them instantly
-- Automation powered by n8n workflows
-- Supports memory and custom tools integration in AI Agent node
+- **Scrapes latest Python-related job offers**
+- **Filters out saved/starred and already applied offers**
+- **Returns structured data**: title, company, location, technologies, and link
+- **REST API**: `/` endpoint returns job offers as JSON, `/health` for health checks
+- **Ready for n8n integration**: Easily connect to Telegram bots and automation workflows
+- **Dockerized**: Easily deployable anywhere Docker is supported
 
 ---
 
 ## 🔧 Technologies Used
 
-- Python
-  - `selenium`
-  - `beautifulsoup4`
-  - `python-dotenv`
-- Chrome WebDriver
-- Telegram Bot API
-- n8n (Low-code automation platform)
-- Groq Chat Model (via AI Agent in n8n)
-- Simple Memory and Workflow Tools (n8n integrations)
+- **Python**: `selenium`, `beautifulsoup4`, `flask`, `python-dotenv`
+- **Chrome WebDriver** (headless, via Docker)
+- **Docker** (for containerization)
+- **n8n** (for workflow automation and Telegram bot integration)
 
 ---
 
 ## 🧠 Project Architecture
 
-### 1. Python Web Scraper
+### 1. Python Web Scraper (`src/scraper.py`)
 
-- Authenticates into pracuj.pl with credentials from `.env`
+- Logs into a job portal using credentials from environment variables
 - Navigates to the job search page
-- Scrapes job offer data
-- Saves filtered results into `job_offers.json`
+- Scrapes and filters job offers
+- Returns results as a list of dictionaries
 
-### 2. n8n Workflows
+### 2. Flask API (`src/app.py`)
 
-- **Workflow 1**: 
-  - Triggered on Telegram message
-  - Uses AI Agent (Groq Model + Memory + Tool)
-  - Tool: Calls another n8n workflow to fetch job data
-  - Responds via Telegram
+- **`/`**: Triggers the scraper and returns job offers as JSON
+- **`/health`**: Simple health check endpoint
 
-- **Workflow 2**: 
-  - Triggered by another workflow
-  - Makes HTTP request to Python job scraper API (hosted locally)
-  - Limits results and returns top 20 offers
+### 3. n8n Workflows (external, not included)
+
+- **Workflow 1**: Triggered by Telegram messages, uses an AI Agent to process requests and fetch job data via the Flask API
+- **Workflow 2**: Fetches job data from the Flask API and returns the top 20 offers
 
 ---
 
 ## ▶️ How to Run
 
-### 1. Setup Python Environment
+### 1. Clone the Repository
+
+```bash
+git clone <your-repo-url>
+cd job_offers_scrapy
+```
+
+### 2. Setup Python Environment (for local development)
 
 ```bash
 pip install -r requirements.txt
 ```
 
-`.env` file format:
+Create a `.env` file in the project root:
 
 ```
 EMAIL=your_email_here
 PASSWORD=your_password_here
 ```
 
-### 2. Run the Scraper Locally
+### 3. Run the Scraper API Locally
 
 ```bash
-python job_scraper.py
+cd src
+python app.py
 ```
 
-The scraper runs on a local server (e.g., Flask or any HTTP server exposing it via `http://localhost:5000`).
+- The API will be available at `http://localhost:5000/`
+- Test with: `curl http://localhost:5000/health`
 
-### 3. Setup and Deploy n8n
+### 4. Build and Run with Docker
 
-- Create Telegram bot and connect it to n8n
-- Import the workflow files on your own n8n dashbord and config them
+```bash
+docker build -t flask_scraper_app .
+docker run -p 5000:5000 --env EMAIL=your_email --env PASSWORD=your_password flask_scraper_app
+```
 
+### 5. Cloud Hosting (Optional)
+
+You can host the scraper API on any cloud platform (such as AWS ECS, EC2, or similar).  
+Once hosted, simply send HTTP requests from your n8n workflow to the API endpoint.
+
+---
+
+## 🧩 n8n Integration
+
+- Set up a Telegram bot and connect it to n8n
+- Import your n8n workflows (see screenshots below)
+- Configure HTTP Request nodes to call your deployed Flask API
 
 ---
 
 ## 📷 Screenshots
-
-Here are some visuals of the workflows in action:
 
 ### 🧩 n8n Workflow 1 - Telegram Trigger
 ![Workflow 1](workflow_screenshots/workflow2.png)
@@ -95,17 +107,33 @@ Here are some visuals of the workflows in action:
 ### 🔄 n8n Workflow 2 - Job Fetcher
 ![Workflow 2](workflow_screenshots/workflow1.png)
 
-
----
-
-## 🧪 Future Improvements
-
-- Host scraper behind a Flask API permanently
-- Enable auto-triggered updates every X hours
-- Improve error handling and retries in scraper
-
 ---
 
 ## 📄 License
 
 MIT License
+
+---
+
+## 📝 File Structure
+
+```
+job_offers_scrapy/
+├── Dockerfile
+├── requirements.txt
+├── README.md
+├── deploy_aws_ecs.sh
+├── src/
+│   ├── app.py
+│   └── scraper.py
+└── workflow_screenshots/
+    ├── workflow1.png
+```
+
+---
+
+## ❗ Notes
+
+- **Credentials:** Never commit real credentials to version control. Use `.env` for local, and environment variables or a secrets manager for production.
+- **Cloud Hosting:** Ensure your API is accessible from n8n (public IP or proper networking).
+- **Telegram/n8n:** n8n workflows are not included in this repo, but screenshots and integration instructions are provided.

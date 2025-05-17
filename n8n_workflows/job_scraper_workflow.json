@@ -1,0 +1,408 @@
+{
+  "name": "My workflow copy_new",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Format these job listings for Telegram with MarkdownV2. Escape all special characters:\n\n[PASTE RAW JOB LISTINGS HERE]\n\nExample raw input:\nTitle: Backend Engineer (Python)  \nCompany: TechCorp Ltd.  \nLocation: Warsaw, Poland (Remote)  \nTechnologies: Python, AWS, Docker  \nLink: https://example.com/job/123\n\nExpected output:\n\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n📌 *Backend Engineer \\\\(Python\\\\)*  \n🏢 *Company*: TechCorp Ltd\\\\.  \n📍 *Location*: Warsaw\\\\, Poland \\\\(Remote\\\\)  \n💡 *Technologies*: Python\\\\, AWS\\\\, Docker  \n🔗 [Apply Here](https://example.com/job/123)  \n\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\nHere is the raw message containing job listings:\n\n{{ $json.message }}",
+        "options": {
+          "systemMessage": "=You are a strict Telegram message formatter specializing in job listings. Follow these rules absolutely:\n\n1. **Output Formatting**:\n   - Use MarkdownV2 (escape these characters everywhere: \\_ * [ ] ( ) ~ ` > # + - = | { } . !)\n   - Structure each job like this:\n     \\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n     📌 *{Title}*\n     🏢 *Company*: {Company}\n     📍 *Location*: {Location}\n     💡 *Technologies*: {Tech1, Tech2}\n     🔗 [Apply Here]({Link}) *(if link exists)*\n     \\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n\n2. **Critical Rules**:\n   - Escape EVERY special character in ALL text fields (e.g., \"Remote (Poland)\" → \"Remote \\\\(Poland\\\\)\")\n   - Links MUST be in [text](url) format\n   - Never exceed 4096 characters total\n   - No introductory/closing text - only formatted jobs\n   - Separate jobs with \\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n\n3. **Error Prevention**:\n   - If a field is missing (e.g., no link), omit that line completely\n   - Double-check that every opening * has a closing *\n   - Replace \"null\" links with empty string"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        2320,
+        -280
+      ],
+      "id": "5f977e41-1884-4003-a095-147238d93bb2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "gemma2-9b-it",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        2340,
+        -40
+      ],
+      "id": "e61dde9d-a90b-4d65-a76b-0c83eccda4b0",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "aeD8qYdLJgQBbTvJ",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        280,
+        60
+      ],
+      "id": "e7a93bdf-0619-4505-a602-9bbeab757d1c",
+      "name": "Telegram Trigger",
+      "webhookId": "54e8ac7d-ced8-41da-be20-0533c019b3b5",
+      "credentials": {
+        "telegramApi": {
+          "id": "syam7JMaVzb0XL0T",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2740,
+        -280
+      ],
+      "id": "0a1aad6a-7e90-48eb-945d-04eebf7b3a7e",
+      "name": "Telegram",
+      "webhookId": "1d433de4-d2dc-4834-af1e-49f2caec8286",
+      "credentials": {
+        "telegramApi": {
+          "id": "syam7JMaVzb0XL0T",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://52.29.154.203:5000/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1380,
+        -300
+      ],
+      "id": "30b9dc15-1bb0-46f5-86f0-72d7584cef41",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const batchSize = 5;\nconst output = [];\n\nfor (let i = 0; i < items.length; i += batchSize) {\n  const batch = items.slice(i, i + batchSize);\n\n  const message = batch.map(item => {\n    const job = item.json;\n    return `Title: ${job.title}\\nCompany: ${job.company}\\nLocation: ${job.location}\\nTechnologies: ${job.technologies.join(', ')}\\nLink: ${job.link}`;\n  }).join('\\n\\n');\n\n  output.push({\n    json: {\n      message\n    },\n    pairedItem: batch.map((_, index) => i + index), // maintain traceability\n  });\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -300
+      ],
+      "id": "9cf1d8b6-649e-4041-9041-221ce8d95a51",
+      "name": "Code",
+      "notesInFlow": true,
+      "notes": "Batch"
+    },
+    {
+      "parameters": {
+        "batchSize": 2,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1820,
+        -300
+      ],
+      "id": "a6261c2e-ef62-4b76-9d9d-e3da8d1b8428",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3d9823dc-d0ed-4c0c-a673-b9227cfa43f5",
+              "leftValue": "={{ $json.is_job_related }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        60
+      ],
+      "id": "e3134f88-01d8-4ca3-9d1c-600074f0f805",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "You are a helpful assistant responding to user questions and classifying their intent.\n\nYour task is twofold:\n\n    Detect whether the user's message is about job offers (e.g., jobs, positions, hiring, openings).\n\n    Provide an appropriate and helpful response to the user's message.\n\nReturn a valid JSON string with the following keys:\n\n    is_job_related: true if the question is about job offers, otherwise false.\n\n    answer: your helpful and relevant reply to the user's message.\n\n⚠️ Important Instructions:\n\n    You must not retrieve or generate job offers from memory or external sources.\n\n    You must only reply based on the user's message context.\n\n    Return the JSON as a plain string.\n\n    Do not call or wrap the output with JSON.stringify() or any function.\n\n    Do not include any extra text, formatting, or explanations before or after the JSON string.\n\n    The response must be directly usable by downstream parsers expecting a JSON-formatted string.\n\n✅ Example output:\n\"{\\\"is_job_related\\\": true, \\\"answer\\\": \\\"Here are the latest job openings in Python development...\\\"}\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        540,
+        60
+      ],
+      "id": "a1b33277-41fe-4f09-9257-a7f9dff9d199",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.answer }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1660,
+        220
+      ],
+      "id": "74d353d6-f7d8-4069-80b0-95c9905c2632",
+      "name": "Telegram1",
+      "webhookId": "89f639ef-1d54-4896-aa61-c685df9a4282",
+      "credentials": {
+        "telegramApi": {
+          "id": "syam7JMaVzb0XL0T",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gemma2-9b-it",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        560,
+        260
+      ],
+      "id": "3d42571e-955c-4e0b-bfa9-b55ecb3105bb",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "aeD8qYdLJgQBbTvJ",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $input.first().json.output;\n\ntry {\n  // Ensure raw is a string and trim it\n  if (typeof raw === 'string') {\n    raw = raw.trim();\n\n    // Remove surrounding quotes if double-quoted as a string\n    if (raw.startsWith('\"') && raw.endsWith('\"')) {\n      raw = raw.slice(1, -1);\n    }\n\n    // Replace unescaped control characters with safe alternatives\n    raw = raw.replace(/[\\u0000-\\u001F\\u007F]/g, ' ');\n  }\n\n  // Try parsing the cleaned string\n  const parsed = JSON.parse(raw);\n\n  // Escape MarkdownV2 characters\n  const escapeMarkdown = (text) => {\n    return text.replace(/([_*[\\]()~`>#+\\-=|{}.!])/g, '\\\\$1');\n  };\n\n  const escapedAnswer = escapeMarkdown(parsed.answer || '');\n\n  return [\n    {\n      json: {\n        ...parsed,\n        answer: escapedAnswer,\n      },\n    },\n  ];\n\n} catch (error) {\n  return [\n    {\n      json: {\n        error: \"Failed to parse JSON output\",\n        original: raw,\n        message: error.message,\n      },\n    },\n  ];\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        60
+      ],
+      "id": "82aeb071-2526-4b7a-a0ea-2f0488354cc9",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        680,
+        260
+      ],
+      "id": "29029e5d-7179-4b97-b8f8-d7f83dab2e2d",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "13df9141-110d-45c6-8474-c238136f9e29",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "afcea427f979895faff04eab944eb5fc82fdd0cc409112fb1e9ebf4d412cc581"
+  },
+  "id": "5l6A3hsVTvax2Tii",
+  "tags": []
+}

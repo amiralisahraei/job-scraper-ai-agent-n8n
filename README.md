@@ -50,7 +50,7 @@ This project is a **Python-based job scraper** exposed as a Flask API, designed 
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/amiralisahraei/job-scraper-ai-agent-n8n.git
 cd job_offers_scrapy
 ```
 
@@ -118,7 +118,6 @@ job_offers_scrapy/
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
-├── deploy_aws_ecs.sh
 ├── src/
 │   ├── app.py
 │   └── scraper.py

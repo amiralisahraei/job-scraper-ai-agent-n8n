@@ -101,7 +101,7 @@ Once hosted, simply send HTTP requests from your n8n workflow to the API endpoin
 
 ## 📷 Screenshots
 
-![Workflow 1](workflow_1.png)
+![Workflow 1](/workflow_screenshots/workflow_1.png)
 
 ---
 

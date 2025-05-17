@@ -101,11 +101,7 @@ Once hosted, simply send HTTP requests from your n8n workflow to the API endpoin
 
 ## 📷 Screenshots
 
-### 🧩 n8n Workflow 1 - Telegram Trigger
-![Workflow 1](workflow_screenshots/workflow2.png)
-
-### 🔄 n8n Workflow 2 - Job Fetcher
-![Workflow 2](workflow_screenshots/workflow1.png)
+![Workflow 1](workflow_1.png)
 
 ---
 

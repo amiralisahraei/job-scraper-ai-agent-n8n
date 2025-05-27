@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import json
 from dotenv import load_dotenv
 import os
+import time
 
 load_dotenv()
 
@@ -20,7 +21,6 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-gpu")
 options.add_argument("--window-size=1920,1080")
-
 
 
 def accept_cookies(driver):
@@ -62,32 +62,102 @@ def login(driver, email, password):
         pass
 
 
+def expand_all_multiple_locations(driver):
+    """Expand all multiple location containers."""
+    try:
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-test='default-offer']"))
+        )
+        containers = driver.find_elements(By.CSS_SELECTOR, "div[data-test-location='multiple']")
+        expanded = 0
+        for container in containers:
+            try:
+                clickable_elements = container.find_elements(By.CSS_SELECTOR, 
+                    "button, a, *[role='button'], *[onclick], *[cursor='pointer']")
+                target_element = None
+                for elem in clickable_elements:
+                    elem_text = elem.text.strip().lower()
+                    elem_class = elem.get_attribute('class') or ''
+                    if any(keyword in elem_text for keyword in ['lokalizacj', 'więcej', 'rozwiń', 'pokaż']):
+                        target_element = elem
+                        break
+                    elif any(keyword in elem_class for keyword in ['expand', 'toggle', 'show-more']):
+                        target_element = elem
+                        break
+                if not target_element:
+                    target_element = clickable_elements[0] if clickable_elements else container
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", target_element)
+                time.sleep(0.5)
+                driver.execute_script("arguments[0].click();", target_element)
+                time.sleep(1)
+                expanded += 1
+            except Exception:
+                continue
+        if expanded > 0:
+            time.sleep(2)
+        return expanded
+    except Exception:
+        return 0
+
 def parse_offer(offer):
     """Extract job offer details from HTML."""
-    star_button = offer.find("button", attrs={"data-test": "add-to-favourites"})
-    if star_button and star_button.get("data-test-checkboxstate") == "true":
+    try:
+        if (offer.find("button", attrs={"data-test": "add-to-favourites", "data-test-checkboxstate": "true"}) or
+            offer.find("div", attrs={"data-test": "applied-text"})):
+            return None
+
+        details = {
+            "title": _get_text(offer, "h2", "offer-title"),
+            "company": _get_text(offer, "h3", "text-company-name"),
+            "technologies": [
+                tag.get_text(strip=True) 
+                for tag in offer.find_all("span", attrs={"data-test": "technologies-item"})
+            ]
+        }
+
+        location_links = offer.find_all("a", attrs={"data-test": "link-offer"})
+        if len(location_links) > 1:
+            if offer.find("button", attrs={"data-test-checkboxstate": "true"}):
+                return None
+            results = []
+            links_array = []
+            for link in location_links:
+                text_location = link.get_text(strip=True)
+                links_array.append({
+                    text_location: link["href"]
+                })
+            details.update({
+                "links": links_array
+            })
+            results.append(details)
+            return results if results else None
+
+        location_text = _get_text(offer, "h4", "text-region")
+        link_href = _get_href(offer, "a", "link-offer")
+        details.update({
+            "location": location_text,
+            "link": link_href
+        })
+        return details
+
+    except Exception:
         return None
 
-    if offer.find("div", attrs={"data-test": "applied-text"}):
-        return None
 
-    title = offer.find("h2", attrs={"data-test": "offer-title"})
-    company = offer.find("h3", attrs={"data-test": "text-company-name"})
-    location = offer.find("h4", attrs={"data-test": "text-region"})
-    link_tag = offer.find("a", attrs={"data-test": "link-offer"})
-    tech_tags = offer.find_all("span", attrs={"data-test": "technologies-item"})
+def _get_text(element, tag, data_test):
+    """Helper function to get text from element safely."""
+    found = element.find(tag, attrs={"data-test": data_test})
+    return found.get_text(strip=True) if found else None
 
-    return {
-        "title": title.get_text(strip=True) if title else None,
-        "company": company.get_text(strip=True) if company else None,
-        "location": location.get_text(strip=True) if location else None,
-        "link": link_tag["href"] if link_tag and "href" in link_tag.attrs else None,
-        "technologies": [tech.get_text(strip=True) for tech in tech_tags],
-    }
+
+def _get_href(element, tag, data_test):
+    """Helper function to get href from element safely."""
+    found = element.find(tag, attrs={"data-test": data_test})
+    return found["href"] if found and "href" in found.attrs else None
 
 
 def scrape_jobs():
-    """Main scraping logic."""
+    """Main scraping logic with expand-all-first approach."""
     driver = webdriver.Chrome(service=ChromeService(), options=options)
     results = []
 
@@ -96,10 +166,11 @@ def scrape_jobs():
         search_url = "https://it.pracuj.pl/praca/python%20engineer;kw/ostatnich%2024h;p,1/polska;ct,1"
         driver.get(search_url)
 
+        page_count = 0
         while True:
-            WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-test='default-offer']"))
-            )
+            page_count += 1
+
+            expanded_count = expand_all_multiple_locations(driver)
 
             soup = BeautifulSoup(driver.page_source, "html.parser")
             offers_section = soup.find("div", attrs={"data-test": "section-offers"})
@@ -108,14 +179,20 @@ def scrape_jobs():
             for offer in job_offers:
                 parsed = parse_offer(offer)
                 if parsed:
-                    results.append(parsed)
+                    if isinstance(parsed, list):
+                        results.extend(parsed)
+                    else:
+                        results.append(parsed)
 
             try:
-                next_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-test='bottom-pagination-button-next']"))
-                )
+                next_button = driver.find_element(By.CSS_SELECTOR, "button[data-test='bottom-pagination-button-next']")
+                if not next_button.is_enabled():
+                    break
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", next_button)
+                time.sleep(1)
                 driver.execute_script("arguments[0].click();", next_button)
                 WebDriverWait(driver, 10).until(EC.staleness_of(next_button))
+                time.sleep(2)
             except Exception:
                 break
 
@@ -130,11 +207,13 @@ def save_results(results, output_path="../output/output.json"):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
+    print(f"Saved {len(results)} results to {output_path}")
 
 
 if __name__ == "__main__":
     try:
         results = scrape_jobs()
         save_results(results)
+        print(f"\nScraping completed! Found {len(results)} total job offers.")
     except Exception as e:
         print(f"An error occurred: {e}")
